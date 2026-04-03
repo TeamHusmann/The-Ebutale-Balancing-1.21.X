@@ -86,9 +86,11 @@ All template boilerplate has been cleaned up. This is the current layout:
 
 ```
 The-Ebutale-Balancing-1.21.X/
-├── build.gradle                           # Build config, dependencies (JEI enabled)
+├── build.gradle                           # Build config, dependencies (JEI + The Ebutale)
 ├── gradle.properties                      # Versions, mod metadata, JEI version
 ├── settings.gradle                        # Plugin repos (foojay JDK resolver)
+├── libs/
+│   └── the_ebutale-1.1.s1-neoforge-1.21.1.jar  # The Ebutale mod (dev dependency)
 ├── SETUP_GUIDE.md                         # This file
 ├── src/
 │   ├── main/
@@ -97,10 +99,14 @@ The-Ebutale-Balancing-1.21.X/
 │   │   │   ├── EbutaleBalancingClient.java # Client-side setup (config screen)
 │   │   │   ├── Config.java                # Mod config (enableJeiInfo toggle)
 │   │   │   └── integration/jei/
-│   │   │       └── EbutaleBalancingJeiPlugin.java  # JEI plugin (skeleton)
+│   │   │       └── EbutaleBalancingJeiPlugin.java  # JEI plugin
 │   │   ├── resources/
-│   │   │   └── assets/ebutalebalancing/lang/
-│   │   │       └── en_us.json             # English translations
+│   │   │   ├── assets/ebutalebalancing/lang/
+│   │   │   │   └── en_us.json             # English translations
+│   │   │   └── data/ebutalebalancing/recipe/  # Balancing recipes (26 files)
+│   │   │       ├── blasting_*.json        # Blast furnace recipes for ores (12)
+│   │   │       ├── smelting_*.json        # Furnace cooking for foods (7)
+│   │   │       └── campfire_*.json        # Campfire cooking for foods (7)
 │   │   └── templates/META-INF/
 │   │       └── neoforge.mods.toml         # Mod metadata + dependencies
 │   └── generated/resources/               # Output from data generators
@@ -112,7 +118,8 @@ The-Ebutale-Balancing-1.21.X/
 | File | Purpose |
 |------|---------|
 | `gradle.properties` | All version pins: MC 1.21.1, NeoForge 21.1.222, JEI 19.27.0.340, mod metadata |
-| `build.gradle` | JEI Maven repo (Jared's Maven), JEI compile/runtime deps, NeoForge plugin config |
+| `build.gradle` | JEI Maven repo, JEI + The Ebutale deps, NeoForge plugin config |
+| `libs/the_ebutale-*.jar` | The Ebutale mod jar — compile + runtime dependency for dev |
 | `neoforge.mods.toml` | Declares The Ebutale (required) and JEI (optional, client-side) as dependencies |
 | `EbutaleBalancing.java` | `@Mod` class — registers config and event listeners |
 | `EbutaleBalancingClient.java` | `@Mod(dist=CLIENT)` — registers NeoForge config screen |
@@ -169,9 +176,98 @@ These changes have already been applied. Documenting them here for reference:
 - Skeleton `registerCategories()`, `registerRecipes()`, `registerRecipeCatalysts()` methods with commented examples
 - JEI discovers the plugin automatically at runtime via the annotation
 
+### 4j. Added The Ebutale mod jar as a dev dependency
+- Downloaded from Modrinth: `the_ebutale-1.1.s1-neoforge-1.21.1.jar` (v1.1 snapshot 1, "The Rebuilt Update")
+- Placed in `libs/` directory
+- Added to `build.gradle` as `implementation files("libs/the_ebutale-1.1.s1-neoforge-1.21.1.jar")`
+- This makes The Ebutale's items/blocks available at compile time and loads the mod during `./gradlew runClient`
+- **To update:** download a new jar from https://modrinth.com/mod/the-ebutale, replace the file in `libs/`, update the filename in `build.gradle`
+
+### 4k. Created 26 balancing recipes
+All recipes are JSON data packs in `src/main/resources/data/ebutalebalancing/recipe/`. JEI picks these up automatically — no plugin code needed.
+
 ---
 
-## 5. JEI Integration — How It Works
+## 5. Balancing Recipes Added
+
+### The Ebutale Mod Analysis
+
+The Ebutale (mod ID: `the_ebutale`, v1.1.s1) is a MCreator mod by SocialTag that adds:
+- **The Eburis dimension** (accessed via Rift Opener + Anomaly Researcher NPC + Dimensional Sanctum)
+- **9 metal tiers:** Eburisian Copper, Tin, Silver, Flimsium, Tritium, Mytrium, Vervonite, Cryonium, Pyronium
+- **6 stone types** with full block sets (cobbled, bricks, slabs, stairs, walls, tiles, grit)
+- **12 wood types** (softwood + hardwood) with tools, bows, block sets
+- **12 mobs**, 7+ armor sets, 15+ food items, 3 glass types with 16 dye colors each
+- **1,450 existing recipes** — ALL vanilla types (shaped, shapeless, smelting, stonecutting, smoking)
+- **Zero custom machines or recipe types** — everything uses vanilla crafting stations
+
+### Gaps Identified
+
+1. **No blast furnace recipes** — all ore smelting is furnace-only, no 2x-speed blasting alternative
+2. **No furnace/campfire cooking** — all food cooking is smoker-only, missing standard furnace and campfire
+3. These are standard vanilla recipe types that players expect to work
+
+### Recipes Created (26 total)
+
+#### Blast Furnace — Ore Processing (12 recipes)
+Blast furnace processes ores at 2x speed (100 ticks vs 200). Each ore has two input variants: the ore block and the raw item.
+
+| Recipe | Input | Output |
+|--------|-------|--------|
+| `blasting_eburisian_copper_from_ore` | Eburisian Copper Ore | Eburisian Copper Ingot |
+| `blasting_eburisian_copper_from_raw` | Raw Eburisian Copper | Eburisian Copper Ingot |
+| `blasting_eburisian_tin_from_ore` | Eburisian Tin Ore | Eburisian Tin Ingot |
+| `blasting_eburisian_tin_from_raw` | Raw Eburisian Tin | Eburisian Tin Ingot |
+| `blasting_eburisian_silver_from_ore` | Eburisian Silver Ore | Eburisian Silver Ingot |
+| `blasting_eburisian_silver_from_raw` | Raw Eburisian Silver | Eburisian Silver Ingot |
+| `blasting_flimsium_from_ore` | Flimsium Ore | Flimsium Ingot |
+| `blasting_flimsium_from_raw` | Raw Flimsium | Flimsium Ingot |
+| `blasting_tritium_from_ore` | Tritium Ore | Tritium Ingot |
+| `blasting_tritium_from_raw` | Raw Tritium | Tritium Ingot |
+| `blasting_mytrium_from_ore` | Mytrium Ore | Mytrium Ingot |
+| `blasting_mytrium_from_raw` | Raw Mytrium | Mytrium Ingot |
+
+*Note: Cryonium, Vervonite, and Pyronium are crafted from shards/components — not smelted from ore — so no blasting recipe applies.*
+
+#### Furnace Cooking — Food (7 recipes)
+Standard furnace smelting for food items (200 ticks, 0.35 XP). The Ebutale only had smoker recipes.
+
+| Recipe | Input | Output |
+|--------|-------|--------|
+| `smelting_eburisian_mutton` | Raw Eburisian Mutton | Cooked Eburisian Mutton |
+| `smelting_eburisian_pork_loin` | Raw Eburisian Pork Loin | Cooked Eburisian Pork Loin |
+| `smelting_silkie_chicken` | Raw Silkie Chicken | Cooked Silkie Chicken |
+| `smelting_eburisian_beef` | Raw Eburisian Beef | Eburisian Steak |
+| `smelting_venison` | Raw Venison | Venison Steak |
+| `smelting_mighty_chuck` | Raw Mighty Chuck | Mighty Chuck Steak |
+| `smelting_silkie_egg` | Silkie Egg | Fried Silkie Egg |
+
+#### Campfire Cooking — Food (7 recipes)
+Campfire cooking (600 ticks, 0.35 XP, no fuel needed). Matches vanilla campfire behavior.
+
+| Recipe | Input | Output |
+|--------|-------|--------|
+| `campfire_eburisian_mutton` | Raw Eburisian Mutton | Cooked Eburisian Mutton |
+| `campfire_eburisian_pork_loin` | Raw Eburisian Pork Loin | Cooked Eburisian Pork Loin |
+| `campfire_silkie_chicken` | Raw Silkie Chicken | Cooked Silkie Chicken |
+| `campfire_eburisian_beef` | Raw Eburisian Beef | Eburisian Steak |
+| `campfire_venison` | Raw Venison | Venison Steak |
+| `campfire_mighty_chuck` | Raw Mighty Chuck | Mighty Chuck Steak |
+| `campfire_silkie_egg` | Silkie Egg | Fried Silkie Egg |
+
+### How these appear in JEI
+
+All 26 recipes are standard vanilla recipe types. JEI automatically detects them and shows them in the appropriate categories:
+- **Blast furnace** icon → blasting recipes (press R on an ingot to see)
+- **Furnace** icon → smelting food recipes
+- **Campfire** icon → campfire cooking recipes
+- Players can also press **U** on a raw item to see all ways to cook/process it
+
+No JEI plugin code is required for these recipes — the JSON data packs are sufficient.
+
+---
+
+## 6. JEI Integration — How It Works
 
 ### What JEI does for players
 
@@ -258,7 +354,7 @@ public void registerRecipes(IRecipeRegistration registration) {
 
 ---
 
-## 6. Testing
+## 7. Testing
 
 ### Dev testing (fast iteration)
 ```bash
@@ -282,7 +378,7 @@ This launches MC with the mod and JEI loaded in a dev environment. Changes to co
 
 ---
 
-## 7. Common Gradle Commands
+## 8. Common Gradle Commands
 
 ```bash
 # Always set JAVA_HOME first (or add to ~/.zshrc):
@@ -301,7 +397,7 @@ export JAVA_HOME="/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 
 ---
 
-## 8. Version Reference
+## 9. Version Reference
 
 | Component | Version | Where defined |
 |-----------|---------|---------------|
@@ -315,11 +411,38 @@ export JAVA_HOME="/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 
 ---
 
-## 9. Next Steps
+## 10. The Ebutale Mod Reference
 
-- [ ] Verify The Ebutale mod ID is actually `the_ebutale` (check its jar or source) and update `neoforge.mods.toml` if different
-- [ ] Add JSON recipes (data packs) for Ebutale items that need crafting paths — JEI shows these automatically
-- [ ] Implement specific `IRecipeCategory` classes for any custom crafting mechanics
-- [ ] Add `addItemStackInfo()` calls in the JEI plugin for Ebutale items that need descriptions
-- [ ] Set up data generators (`./gradlew runData`) for recipe JSON generation
-- [ ] Test with The Ebutale mod actually loaded (need the jar in dev environment or as a dependency)
+- **Mod ID:** `the_ebutale` (confirmed)
+- **Version:** 1.1.s1 ("The Rebuilt Update" snapshot 1)
+- **Author:** SocialTag
+- **Modrinth:** https://modrinth.com/mod/the-ebutale
+- **Made with:** MCreator (package: `net.mcreator.theebutale`)
+- **License:** All Rights Reserved (no source code available)
+- **Recipe types:** ALL vanilla — shaped crafting, shapeless, smelting, stonecutting, smoking
+- **No custom machines** — everything uses vanilla crafting table, furnace, smoker, stonecutter
+
+### Key item namespaces (all prefixed `the_ebutale:`)
+
+**Metals:** `eburisian_copper_ingot`, `eburisian_tin_ingot`, `eburisian_silver_ingot`, `flimsium_ingot`, `tritium_ingot`, `mytrium_ingot`, `vervonite_ingot`, `cryonium_ingot`, `pyronium_ingot`
+
+**Raw ores:** `raw_eburisian_copper`, `raw_eburisian_tin`, `raw_eburisian_silver`, `raw_flimsium`, `raw_tritium`, `raw_mytrium`
+
+**Foods (raw):** `raw_eburisian_mutton`, `raw_eburisian_pork_loin`, `raw_silkie_chicken`, `raw_eburisian_beef`, `raw_venison`, `raw_mighty_chuck`, `silkie_egg`
+
+**Foods (cooked):** `cooked_eburisian_mutton`, `cooked_eburisian_pork_loin`, `cooked_silkie_chicken`, `eburisian_steak`, `venison_steak`, `mighty_chuck_steak`, `fried_silkie_egg`
+
+---
+
+## 11. Next Steps
+
+- [x] ~~Verify The Ebutale mod ID~~ — confirmed `the_ebutale`
+- [x] ~~Add The Ebutale jar as dev dependency~~ — `libs/` directory
+- [x] ~~Add blast furnace recipes for all smeltable ores~~ — 12 recipes
+- [x] ~~Add furnace + campfire cooking for all foods~~ — 14 recipes
+- [x] ~~Test in-game with `./gradlew runClient`~~ — recipes appear in JEI, confirmed working 2026-04-03
+- [ ] Add `addItemStackInfo()` calls in JEI plugin for key Ebutale items (dimension access guide, tier progression, etc.)
+- [ ] Identify items that still have NO recipe at all and add crafting recipes for them
+- [ ] Consider adding stonecutting shortcuts for Ebutale stone variants
+- [ ] Set up Modrinth App test instance for integration testing
+- [ ] Talk to Jacob about what other balancing changes are needed
